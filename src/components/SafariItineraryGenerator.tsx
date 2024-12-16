@@ -92,7 +92,8 @@ export default function SafariItineraryGenerator() {
   }
 
   const handleRegenerate = () => {
-    handleSubmit(new Event('submit') as React.FormEvent<HTMLFormElement>)
+    const event = { preventDefault: () => {} } as React.FormEvent<HTMLFormElement>
+    handleSubmit(event)
   }
 
   return (

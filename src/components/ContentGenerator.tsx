@@ -272,7 +272,7 @@ export default function ContentGenerator() {
           <Button 
             onClick={handleSubmit} 
             disabled={isLoading} 
-            size="md"
+            size="default"
             className="h-10 rounded-xl text-sm font-medium transition-all hover:scale-[0.98] active:scale-[0.97] bg-gradient-to-r from-blue-500 to-emerald-500 hover:from-blue-600 hover:to-emerald-600 mx-auto"
           >
             {isLoading ? 'Generating...' : 'Generate Content'}

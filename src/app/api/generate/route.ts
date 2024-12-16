@@ -170,10 +170,9 @@ Note: This itinerary can be customized based on specific preferences and require
     }
 
     const completion = await client.chat.completions.create({
-      temperature: 0.7, // Slightly increased for more creative titles
-      max_tokens: 1500, // Increased for longer content
+      temperature: 0.7,
+      max_tokens: 1500,
       top_p: 0.9,
-      top_k: 50,
       model: 'meta-llama/Meta-Llama-3.1-70B-Instruct-fast',
       messages: [
         {
