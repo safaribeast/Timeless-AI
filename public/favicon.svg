@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="16" cy="16" r="16" fill="#1E293B"/>
+  <!-- Letter T for Timeless -->
+  <path d="M8 8H24V12H18V24H14V12H8V8Z" fill="#38BDF8"/>
+  <!-- Infinity symbol for timeless concept -->
+  <path d="M12 20C14 22 18 22 20 20C22 18 22 14 20 12C18 10 14 10 12 12" stroke="#4ADE80" stroke-width="2" stroke-linecap="round"/>
+</svg>
