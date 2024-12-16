@@ -57,7 +57,7 @@ export default function SafariItineraryGenerator() {
     )
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setIsLoading(true)
     try {
@@ -92,7 +92,7 @@ export default function SafariItineraryGenerator() {
   }
 
   const handleRegenerate = () => {
-    handleSubmit(new Event('submit') as any)
+    handleSubmit(new Event('submit') as React.FormEvent<HTMLFormElement>)
   }
 
   return (
@@ -221,4 +221,3 @@ export default function SafariItineraryGenerator() {
     </div>
   )
 }
-
