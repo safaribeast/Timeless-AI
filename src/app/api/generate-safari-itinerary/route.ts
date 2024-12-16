@@ -3,7 +3,7 @@ import OpenAI from 'openai'
 
 const client = new OpenAI({
   baseURL: 'https://api.studio.nebius.ai/v1/',
-  apiKey: process.env.OPENAI_API_KEY || process.env.NEBIUS_API_KEY,
+  apiKey: process.env.NEBIUS_API_KEY,
 })
 
 export async function POST(req: NextRequest) {
