@@ -10,7 +10,12 @@ const client = new OpenAI({
   timeout: TIMEOUT,
 });
 
-async function generateWithRetry(messages: any[], retries = MAX_RETRIES) {
+type Message = {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+async function generateWithRetry(messages: Message[], retries = MAX_RETRIES) {
   try {
     const completion = await client.chat.completions.create({
       temperature: 0.7,
@@ -25,7 +30,7 @@ async function generateWithRetry(messages: any[], retries = MAX_RETRIES) {
     }
 
     return completion.choices[0].message.content;
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (retries > 0) {
       // Wait for 1 second before retrying
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -69,7 +74,7 @@ export async function POST(req: NextRequest) {
 
     Please format the itinerary using Markdown for easy rendering.`;
 
-    const messages = [
+    const messages: Message[] = [
       {
         role: 'system',
         content: `You are an advanced AI assistant specialized in creating detailed and engaging safari itineraries for East Africa. Your primary objectives are to:
@@ -100,10 +105,11 @@ Guidelines:
     const content = await generateWithRetry(messages);
     
     return NextResponse.json({ content });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error generating safari itinerary:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to generate safari itinerary';
     return NextResponse.json(
-      { error: 'Failed to generate safari itinerary. Please try again.' },
+      { error: errorMessage },
       { status: 500 }
     );
   }

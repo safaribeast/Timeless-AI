@@ -58,7 +58,7 @@ export default function SafariItineraryGenerator() {
     )
   }
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleGenerate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
@@ -89,12 +89,19 @@ export default function SafariItineraryGenerator() {
       setGeneratedItinerary(data.content)
       setAiScore(data.aiScore)
       setHumanScore(data.humanScore)
-    } catch (err: any) {
-      setError(err.message || 'An error occurred while generating the itinerary')
-      console.error('Error generating safari itinerary:', err)
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred while generating the itinerary'
+      setError(errorMessage)
+      console.error('Error generating safari itinerary:', error)
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleRegenerate = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault()
+    const formEvent = new Event('submit') as unknown as React.FormEvent<HTMLFormElement>
+    handleGenerate(formEvent)
   }
 
   const handleExport = (format: 'md' | 'doc' | 'pdf') => {
@@ -102,14 +109,9 @@ export default function SafariItineraryGenerator() {
     console.log(`Exporting as ${format}`)
   }
 
-  const handleRegenerate = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    handleSubmit(e)
-  }
-
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleGenerate} className="space-y-6">
         <div>
           <Label htmlFor="companyName">Company Name</Label>
           <Input

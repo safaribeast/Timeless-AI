@@ -69,7 +69,7 @@ export default function ContentGenerator() {
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
@@ -102,12 +102,18 @@ export default function ContentGenerator() {
 
       const data = await response.json()
       setGeneratedContent(data.content)
-    } catch (err: any) {
-      setError(err.message || 'An error occurred while generating content')
-      console.error('Error generating content:', err)
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred while generating content'
+      setError(errorMessage)
+      console.error('Error generating content:', error)
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleRegenerate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    handleGenerate(e)
   }
 
   return (
@@ -285,6 +291,7 @@ export default function ContentGenerator() {
             size="default" 
             className="w-full"
             disabled={loading}
+            onClick={handleGenerate}
           >
             {loading ? (
               <div className="flex items-center space-x-2">
@@ -307,27 +314,32 @@ export default function ContentGenerator() {
               <div className="grid gap-6">
                 <div className="flex items-center justify-between">
                   <h3 className="text-xl font-bold tracking-tight text-white">Generated Content</h3>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleCopy}
-                    className={cn(
-                      "h-8 px-3 lg:px-4 transition-all duration-200 ease-in-out",
-                      isCopied ? "bg-green-500/20 text-green-400 hover:bg-green-500/30 hover:text-green-400" : "bg-gray-700 text-white hover:bg-gray-600"
-                    )}
-                  >
-                    {isCopied ? (
-                      <>
-                        <Check className="mr-2 h-3.5 w-3.5" />
-                        Copied!
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="mr-2 h-3.5 w-3.5" />
-                        Copy
-                      </>
-                    )}
-                  </Button>
+                  <div className="mt-4 flex justify-end space-x-4">
+                    <Button onClick={handleRegenerate} variant="outline" size="sm">
+                      Regenerate
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleCopy}
+                      className={cn(
+                        "h-8 px-3 lg:px-4 transition-all duration-200 ease-in-out",
+                        isCopied ? "bg-green-500/20 text-green-400 hover:bg-green-500/30 hover:text-green-400" : "bg-gray-700 text-white hover:bg-gray-600"
+                      )}
+                    >
+                      {isCopied ? (
+                        <>
+                          <Check className="mr-2 h-3.5 w-3.5" />
+                          Copied!
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="mr-2 h-3.5 w-3.5" />
+                          Copy
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
                 <div className="prose prose-invert max-w-none">
                   <Textarea

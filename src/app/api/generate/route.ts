@@ -10,7 +10,12 @@ const client = new OpenAI({
   timeout: TIMEOUT,
 });
 
-async function generateWithRetry(messages: any[], retries = MAX_RETRIES) {
+type Message = {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+async function generateWithRetry(messages: Message[], retries = MAX_RETRIES) {
   try {
     const completion = await client.chat.completions.create({
       temperature: 0.7,
@@ -25,7 +30,7 @@ async function generateWithRetry(messages: any[], retries = MAX_RETRIES) {
     }
 
     return completion.choices[0].message.content;
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (retries > 0) {
       // Wait for 1 second before retrying
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -212,7 +217,7 @@ Image Requirements:
 Note: This itinerary can be customized based on specific preferences and requirements.`
     }
 
-    const messages = [
+    const messages: Message[] = [
       {
         role: 'system',
         content: `You are an advanced AI assistant designed to help users create high-quality articles and safari itineraries for their websites. Your primary objectives are to:
@@ -243,15 +248,16 @@ Guidelines:
         role: 'user',
         content: prompt,
       },
-    ]
+    ];
 
     const content = await generateWithRetry(messages);
     
     return NextResponse.json({ content });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error generating content:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to generate content';
     return NextResponse.json(
-      { error: 'Failed to generate content. Please try again.' },
+      { error: errorMessage },
       { status: 500 }
     );
   }
