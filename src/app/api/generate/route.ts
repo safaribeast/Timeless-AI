@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import OpenAI from 'openai'
 
 const MAX_RETRIES = 3;
-const TIMEOUT = 120000; // 120 seconds
+const TIMEOUT = 110000; // 110 seconds (to allow for Vercel's 120s limit)
 
 const client = new OpenAI({
   baseURL: 'https://api.studio.nebius.ai/v1/',
@@ -38,6 +38,9 @@ async function generateWithRetry(messages: Message[], retries = MAX_RETRIES): Pr
     }
     
     if (error instanceof Error) {
+      if (error.message.includes('timeout') || error.message.includes('ETIMEDOUT')) {
+        throw new Error('The request timed out. Please try again.');
+      }
       throw new Error(`Generation failed: ${error.message}`);
     }
     throw new Error('Generation failed: Unknown error');
@@ -45,14 +48,15 @@ async function generateWithRetry(messages: Message[], retries = MAX_RETRIES): Pr
 }
 
 export async function POST(req: NextRequest) {
+  const headers = {
+    'Content-Type': 'application/json',
+  };
+
   try {
     if (!process.env.NEBIUS_API_KEY) {
-      return new NextResponse(
+      return new Response(
         JSON.stringify({ error: 'API key is not configured' }),
-        { 
-          status: 500,
-          headers: { 'Content-Type': 'application/json' }
-        }
+        { status: 500, headers }
       );
     }
 
@@ -70,12 +74,9 @@ export async function POST(req: NextRequest) {
     } = await req.json();
 
     if (!contentType || !topic) {
-      return new NextResponse(
+      return new Response(
         JSON.stringify({ error: 'Missing required fields' }),
-        { 
-          status: 400,
-          headers: { 'Content-Type': 'application/json' }
-        }
+        { status: 400, headers }
       );
     }
 
@@ -262,22 +263,16 @@ Guidelines:
 
     const content = await generateWithRetry(messages);
     
-    return new NextResponse(
+    return new Response(
       JSON.stringify({ content }),
-      { 
-        status: 200,
-        headers: { 'Content-Type': 'application/json' }
-      }
+      { status: 200, headers }
     );
   } catch (error: unknown) {
     console.error('Error generating content:', error);
     const errorMessage = error instanceof Error ? error.message : 'Failed to generate content';
-    return new NextResponse(
+    return new Response(
       JSON.stringify({ error: errorMessage }),
-      { 
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      }
+      { status: 500, headers }
     );
   }
 }

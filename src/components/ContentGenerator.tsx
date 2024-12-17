@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox'
 import { FileText, Plane, Copy, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 
 const destinations = {
   Tanzania: ['Northern Circuit', 'Southern Circuit', 'Western Circuit'],
@@ -76,7 +77,7 @@ export default function ContentGenerator() {
     setGeneratedContent('')
 
     try {
-      const response = await fetch('/api/generate', {
+      const response = await fetchWithTimeout('/api/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -93,14 +94,10 @@ export default function ContentGenerator() {
           departureMethod,
           duration,
         }),
+        timeout: 120000, // 2 minutes
       })
 
       const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to generate content')
-      }
-
       setGeneratedContent(data.content)
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'An error occurred while generating content'

@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
+import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 
 const destinations = {
   Tanzania: ['Northern Circuit', 'Southern Circuit', 'Western Circuit'],
@@ -65,7 +66,7 @@ export default function SafariItineraryGenerator() {
     setGeneratedItinerary('')
 
     try {
-      const response = await fetch('/api/generate-safari-itinerary', {
+      const response = await fetchWithTimeout('/api/generate-safari-itinerary', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -78,17 +79,13 @@ export default function SafariItineraryGenerator() {
           arrivalMethod,
           duration,
         }),
+        timeout: 120000, // 2 minutes
       })
 
       const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to generate itinerary')
-      }
-
       setGeneratedItinerary(data.content)
-      setAiScore(data.aiScore)
-      setHumanScore(data.humanScore)
+      setAiScore(data.aiScore || 0)
+      setHumanScore(data.humanScore || 0)
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'An error occurred while generating the itinerary'
       setError(errorMessage)
