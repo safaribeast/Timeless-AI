@@ -55,7 +55,8 @@ export default function ContentGenerator() {
   const [departureMethod, setDepartureMethod] = useState('')
   const [duration, setDuration] = useState('')
   const [generatedContent, setGeneratedContent] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [isCopied, setIsCopied] = useState(false)
 
   const handleCopy = async () => {
@@ -70,7 +71,10 @@ export default function ContentGenerator() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
+    setLoading(true)
+    setError(null)
+    setGeneratedContent('')
+
     try {
       const response = await fetch('/api/generate', {
         method: 'POST',
@@ -90,12 +94,19 @@ export default function ContentGenerator() {
           duration,
         }),
       })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to generate content')
+      }
+
       const data = await response.json()
       setGeneratedContent(data.content)
-    } catch (error) {
-      console.error('Error generating content:', error)
+    } catch (err: any) {
+      setError(err.message || 'An error occurred while generating content')
+      console.error('Error generating content:', err)
     } finally {
-      setIsLoading(false)
+      setLoading(false)
     }
   }
 
@@ -270,14 +281,26 @@ export default function ContentGenerator() {
       <div className="grid gap-6">
         <div className="flex justify-center">
           <Button 
-            onClick={handleSubmit} 
-            disabled={isLoading} 
-            size="default"
-            className="h-10 rounded-xl text-sm font-medium transition-all hover:scale-[0.98] active:scale-[0.97] bg-gradient-to-r from-blue-500 to-emerald-500 hover:from-blue-600 hover:to-emerald-600 mx-auto"
+            type="submit" 
+            size="default" 
+            className="w-full"
+            disabled={loading}
           >
-            {isLoading ? 'Generating...' : 'Generate Content'}
+            {loading ? (
+              <div className="flex items-center space-x-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                <span>Generating...</span>
+              </div>
+            ) : (
+              'Generate Content'
+            )}
           </Button>
         </div>
+        {error && (
+          <div className="mt-4 p-4 bg-red-50 text-red-600 rounded-md">
+            {error}
+          </div>
+        )}
         {generatedContent && (
           <Card className="mt-6 border-2 border-gray-700 bg-gray-800">
             <CardContent className="pt-6">

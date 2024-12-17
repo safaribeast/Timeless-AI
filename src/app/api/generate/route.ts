@@ -1,13 +1,49 @@
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 
+const MAX_RETRIES = 3;
+const TIMEOUT = 60000; // 60 seconds
+
 const client = new OpenAI({
   baseURL: 'https://api.studio.nebius.ai/v1/',
   apiKey: process.env.NEBIUS_API_KEY,
-})
+  timeout: TIMEOUT,
+});
+
+async function generateWithRetry(messages: any[], retries = MAX_RETRIES) {
+  try {
+    const completion = await client.chat.completions.create({
+      temperature: 0.7,
+      max_tokens: 1250,
+      top_p: 0.9,
+      model: 'meta-llama/Meta-Llama-3.1-70B-Instruct-fast',
+      messages,
+    });
+
+    if (!completion.choices?.[0]?.message?.content) {
+      throw new Error('Invalid response format from API');
+    }
+
+    return completion.choices[0].message.content;
+  } catch (error: any) {
+    if (retries > 0) {
+      // Wait for 1 second before retrying
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return generateWithRetry(messages, retries - 1);
+    }
+    throw error;
+  }
+}
 
 export async function POST(req: NextRequest) {
   try {
+    if (!process.env.NEBIUS_API_KEY) {
+      return NextResponse.json(
+        { error: 'API key is not configured' },
+        { status: 500 }
+      );
+    }
+
     const { 
       contentType, 
       topic, 
@@ -19,7 +55,14 @@ export async function POST(req: NextRequest) {
       arrivalMethod,
       departureMethod, 
       duration 
-    } = await req.json()
+    } = await req.json();
+
+    if (!contentType || !topic) {
+      return NextResponse.json(
+        { error: 'Missing required fields' },
+        { status: 400 }
+      );
+    }
 
     let prompt = ''
     if (contentType === 'article') {
@@ -169,15 +212,10 @@ Image Requirements:
 Note: This itinerary can be customized based on specific preferences and requirements.`
     }
 
-    const completion = await client.chat.completions.create({
-      temperature: 0.7,
-      max_tokens: 1500,
-      top_p: 0.9,
-      model: 'meta-llama/Meta-Llama-3.1-70B-Instruct-fast',
-      messages: [
-        {
-          role: 'system',
-          content: `You are an advanced AI assistant designed to help users create high-quality articles and safari itineraries for their websites. Your primary objectives are to:
+    const messages = [
+      {
+        role: 'system',
+        content: `You are an advanced AI assistant designed to help users create high-quality articles and safari itineraries for their websites. Your primary objectives are to:
 
 1. Generate human-like, engaging, and SEO-friendly content tailored to user inputs.
 2. Ensure all generated content scores 85 marks or higher in Rank Math SEO.
@@ -200,19 +238,21 @@ Guidelines:
 - Formatting:
   - Use Markdown for content to enable easy rendering on the app.
   - Provide a clean, well-organized output with appropriate headings and bullet points.`,
-        },
-        {
-          role: 'user',
-          content: prompt,
-        },
-      ],
-    })
+      },
+      {
+        role: 'user',
+        content: prompt,
+      },
+    ]
 
-    const generatedContent = completion.choices[0].message.content
-
-    return NextResponse.json({ content: generatedContent })
-  } catch (error) {
-    console.error('Error generating content:', error)
-    return NextResponse.json({ error: 'Error generating content' }, { status: 500 })
+    const content = await generateWithRetry(messages);
+    
+    return NextResponse.json({ content });
+  } catch (error: any) {
+    console.error('Error generating content:', error);
+    return NextResponse.json(
+      { error: 'Failed to generate content. Please try again.' },
+      { status: 500 }
+    );
   }
 }

@@ -36,7 +36,8 @@ export default function SafariItineraryGenerator() {
   const [generatedItinerary, setGeneratedItinerary] = useState('')
   const [aiScore, setAiScore] = useState(0)
   const [humanScore, setHumanScore] = useState(0)
-  const [isLoading, setIsLoading] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const handleDestinationChange = (value: string) => {
     setDestination(value)
@@ -59,7 +60,10 @@ export default function SafariItineraryGenerator() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    setIsLoading(true)
+    setLoading(true)
+    setError(null)
+    setGeneratedItinerary('')
+
     try {
       const response = await fetch('/api/generate-safari-itinerary', {
         method: 'POST',
@@ -75,14 +79,21 @@ export default function SafariItineraryGenerator() {
           duration,
         }),
       })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to generate itinerary')
+      }
+
       const data = await response.json()
       setGeneratedItinerary(data.content)
       setAiScore(data.aiScore)
       setHumanScore(data.humanScore)
-    } catch (error) {
-      console.error('Error generating itinerary:', error)
+    } catch (err: any) {
+      setError(err.message || 'An error occurred while generating the itinerary')
+      console.error('Error generating safari itinerary:', err)
     } finally {
-      setIsLoading(false)
+      setLoading(false)
     }
   }
 
@@ -91,9 +102,9 @@ export default function SafariItineraryGenerator() {
     console.log(`Exporting as ${format}`)
   }
 
-  const handleRegenerate = () => {
-    const event = { preventDefault: () => {} } as React.FormEvent<HTMLFormElement>
-    handleSubmit(event)
+  const handleRegenerate = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    handleSubmit(e)
   }
 
   return (
@@ -187,9 +198,26 @@ export default function SafariItineraryGenerator() {
             required
           />
         </div>
-        <Button type="submit" disabled={isLoading}>
-          {isLoading ? 'Generating...' : 'Generate Itinerary'}
+        <Button 
+          type="submit"
+          size="default"
+          className="w-full"
+          disabled={loading}
+        >
+          {loading ? (
+            <div className="flex items-center space-x-2">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              <span>Generating...</span>
+            </div>
+          ) : (
+            'Generate Itinerary'
+          )}
         </Button>
+        {error && (
+          <div className="mt-4 p-4 bg-red-50 text-red-600 rounded-md">
+            {error}
+          </div>
+        )}
       </form>
       <div className="space-y-4">
         <div>
