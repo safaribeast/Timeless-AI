@@ -95,12 +95,12 @@ export default function ContentGenerator() {
         }),
       })
 
+      const data = await response.json()
+
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to generate content')
+        throw new Error(data.error || 'Failed to generate content')
       }
 
-      const data = await response.json()
       setGeneratedContent(data.content)
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'An error occurred while generating content'

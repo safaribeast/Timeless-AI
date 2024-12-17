@@ -80,12 +80,12 @@ export default function SafariItineraryGenerator() {
         }),
       })
 
+      const data = await response.json()
+
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to generate itinerary')
+        throw new Error(data.error || 'Failed to generate itinerary')
       }
 
-      const data = await response.json()
       setGeneratedItinerary(data.content)
       setAiScore(data.aiScore)
       setHumanScore(data.humanScore)

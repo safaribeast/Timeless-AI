@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 
 const MAX_RETRIES = 3;
-const TIMEOUT = 60000; // 60 seconds
+const TIMEOUT = 120000; // 120 seconds
 
 const client = new OpenAI({
   baseURL: 'https://api.studio.nebius.ai/v1/',
@@ -15,7 +15,7 @@ type Message = {
   content: string;
 }
 
-async function generateWithRetry(messages: Message[], retries = MAX_RETRIES) {
+async function generateWithRetry(messages: Message[], retries = MAX_RETRIES): Promise<string> {
   try {
     const completion = await client.chat.completions.create({
       temperature: 0.7,
@@ -32,29 +32,39 @@ async function generateWithRetry(messages: Message[], retries = MAX_RETRIES) {
     return completion.choices[0].message.content;
   } catch (error: unknown) {
     if (retries > 0) {
-      // Wait for 1 second before retrying
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Wait for 2 seconds before retrying
+      await new Promise(resolve => setTimeout(resolve, 2000));
       return generateWithRetry(messages, retries - 1);
     }
-    throw error;
+    
+    if (error instanceof Error) {
+      throw new Error(`Generation failed: ${error.message}`);
+    }
+    throw new Error('Generation failed: Unknown error');
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
     if (!process.env.NEBIUS_API_KEY) {
-      return NextResponse.json(
-        { error: 'API key is not configured' },
-        { status: 500 }
+      return new NextResponse(
+        JSON.stringify({ error: 'API key is not configured' }),
+        { 
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        }
       );
     }
 
     const { companyName, destination, circuit, selectedLocations, arrivalMethod, duration } = await req.json();
 
     if (!companyName || !destination || !selectedLocations) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
+      return new NextResponse(
+        JSON.stringify({ error: 'Missing required fields' }),
+        { 
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        }
       );
     }
 
@@ -104,13 +114,22 @@ Guidelines:
 
     const content = await generateWithRetry(messages);
     
-    return NextResponse.json({ content });
+    return new NextResponse(
+      JSON.stringify({ content }),
+      { 
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      }
+    );
   } catch (error: unknown) {
     console.error('Error generating safari itinerary:', error);
     const errorMessage = error instanceof Error ? error.message : 'Failed to generate safari itinerary';
-    return NextResponse.json(
-      { error: errorMessage },
-      { status: 500 }
+    return new NextResponse(
+      JSON.stringify({ error: errorMessage }),
+      { 
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      }
     );
   }
 }
