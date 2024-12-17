@@ -11,7 +11,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox'
 import { FileText, Plane, Copy, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 
 const destinations = {
   Tanzania: ['Northern Circuit', 'Southern Circuit', 'Western Circuit'],
@@ -56,8 +55,7 @@ export default function ContentGenerator() {
   const [departureMethod, setDepartureMethod] = useState('')
   const [duration, setDuration] = useState('')
   const [generatedContent, setGeneratedContent] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
   const [isCopied, setIsCopied] = useState(false)
 
   const handleCopy = async () => {
@@ -70,14 +68,11 @@ export default function ContentGenerator() {
     }
   }
 
-  const handleGenerate = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
-    setError(null)
-    setGeneratedContent('')
-
+    setIsLoading(true)
     try {
-      const response = await fetchWithTimeout('/api/generate', {
+      const response = await fetch('/api/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -94,23 +89,14 @@ export default function ContentGenerator() {
           departureMethod,
           duration,
         }),
-        timeout: 120000, // 2 minutes
       })
-
       const data = await response.json()
       setGeneratedContent(data.content)
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'An error occurred while generating content'
-      setError(errorMessage)
+    } catch (error) {
       console.error('Error generating content:', error)
     } finally {
-      setLoading(false)
+      setIsLoading(false)
     }
-  }
-
-  const handleRegenerate = async (e: React.FormEvent) => {
-    e.preventDefault()
-    handleGenerate(e)
   }
 
   return (
@@ -284,59 +270,41 @@ export default function ContentGenerator() {
       <div className="grid gap-6">
         <div className="flex justify-center">
           <Button 
-            type="submit" 
-            size="default" 
-            className="w-full"
-            disabled={loading}
-            onClick={handleGenerate}
+            onClick={handleSubmit} 
+            disabled={isLoading} 
+            size="default"
+            className="h-10 rounded-xl text-sm font-medium transition-all hover:scale-[0.98] active:scale-[0.97] bg-gradient-to-r from-blue-500 to-emerald-500 hover:from-blue-600 hover:to-emerald-600 mx-auto"
           >
-            {loading ? (
-              <div className="flex items-center space-x-2">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                <span>Generating...</span>
-              </div>
-            ) : (
-              'Generate Content'
-            )}
+            {isLoading ? 'Generating...' : 'Generate Content'}
           </Button>
         </div>
-        {error && (
-          <div className="mt-4 p-4 bg-red-50 text-red-600 rounded-md">
-            {error}
-          </div>
-        )}
         {generatedContent && (
           <Card className="mt-6 border-2 border-gray-700 bg-gray-800">
             <CardContent className="pt-6">
               <div className="grid gap-6">
                 <div className="flex items-center justify-between">
                   <h3 className="text-xl font-bold tracking-tight text-white">Generated Content</h3>
-                  <div className="mt-4 flex justify-end space-x-4">
-                    <Button onClick={handleRegenerate} variant="outline" size="sm">
-                      Regenerate
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleCopy}
-                      className={cn(
-                        "h-8 px-3 lg:px-4 transition-all duration-200 ease-in-out",
-                        isCopied ? "bg-green-500/20 text-green-400 hover:bg-green-500/30 hover:text-green-400" : "bg-gray-700 text-white hover:bg-gray-600"
-                      )}
-                    >
-                      {isCopied ? (
-                        <>
-                          <Check className="mr-2 h-3.5 w-3.5" />
-                          Copied!
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="mr-2 h-3.5 w-3.5" />
-                          Copy
-                        </>
-                      )}
-                    </Button>
-                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCopy}
+                    className={cn(
+                      "h-8 px-3 lg:px-4 transition-all duration-200 ease-in-out",
+                      isCopied ? "bg-green-500/20 text-green-400 hover:bg-green-500/30 hover:text-green-400" : "bg-gray-700 text-white hover:bg-gray-600"
+                    )}
+                  >
+                    {isCopied ? (
+                      <>
+                        <Check className="mr-2 h-3.5 w-3.5" />
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="mr-2 h-3.5 w-3.5" />
+                        Copy
+                      </>
+                    )}
+                  </Button>
                 </div>
                 <div className="prose prose-invert max-w-none">
                   <Textarea

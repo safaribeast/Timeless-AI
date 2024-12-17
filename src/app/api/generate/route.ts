@@ -1,65 +1,13 @@
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
-
-const MAX_RETRIES = 3;
-const TIMEOUT = 110000; // 110 seconds (to allow for Vercel's 120s limit)
 
 const client = new OpenAI({
   baseURL: 'https://api.studio.nebius.ai/v1/',
   apiKey: process.env.NEBIUS_API_KEY,
-  timeout: TIMEOUT,
-});
-
-type Message = {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
-}
-
-async function generateWithRetry(messages: Message[], retries = MAX_RETRIES): Promise<string> {
-  try {
-    const completion = await client.chat.completions.create({
-      temperature: 0.7,
-      max_tokens: 1250,
-      top_p: 0.9,
-      model: 'meta-llama/Meta-Llama-3.1-70B-Instruct-fast',
-      messages,
-    });
-
-    if (!completion.choices?.[0]?.message?.content) {
-      throw new Error('Invalid response format from API');
-    }
-
-    return completion.choices[0].message.content;
-  } catch (error: unknown) {
-    if (retries > 0) {
-      // Wait for 2 seconds before retrying
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      return generateWithRetry(messages, retries - 1);
-    }
-    
-    if (error instanceof Error) {
-      if (error.message.includes('timeout') || error.message.includes('ETIMEDOUT')) {
-        throw new Error('The request timed out. Please try again.');
-      }
-      throw new Error(`Generation failed: ${error.message}`);
-    }
-    throw new Error('Generation failed: Unknown error');
-  }
-}
+})
 
 export async function POST(req: NextRequest) {
-  const headers = {
-    'Content-Type': 'application/json',
-  };
-
   try {
-    if (!process.env.NEBIUS_API_KEY) {
-      return new Response(
-        JSON.stringify({ error: 'API key is not configured' }),
-        { status: 500, headers }
-      );
-    }
-
     const { 
       contentType, 
       topic, 
@@ -71,14 +19,7 @@ export async function POST(req: NextRequest) {
       arrivalMethod,
       departureMethod, 
       duration 
-    } = await req.json();
-
-    if (!contentType || !topic) {
-      return new Response(
-        JSON.stringify({ error: 'Missing required fields' }),
-        { status: 400, headers }
-      );
-    }
+    } = await req.json()
 
     let prompt = ''
     if (contentType === 'article') {
@@ -228,10 +169,15 @@ Image Requirements:
 Note: This itinerary can be customized based on specific preferences and requirements.`
     }
 
-    const messages: Message[] = [
-      {
-        role: 'system',
-        content: `You are an advanced AI assistant designed to help users create high-quality articles and safari itineraries for their websites. Your primary objectives are to:
+    const completion = await client.chat.completions.create({
+      temperature: 0.7,
+      max_tokens: 1500,
+      top_p: 0.9,
+      model: 'meta-llama/Meta-Llama-3.1-70B-Instruct-fast',
+      messages: [
+        {
+          role: 'system',
+          content: `You are an advanced AI assistant designed to help users create high-quality articles and safari itineraries for their websites. Your primary objectives are to:
 
 1. Generate human-like, engaging, and SEO-friendly content tailored to user inputs.
 2. Ensure all generated content scores 85 marks or higher in Rank Math SEO.
@@ -254,25 +200,19 @@ Guidelines:
 - Formatting:
   - Use Markdown for content to enable easy rendering on the app.
   - Provide a clean, well-organized output with appropriate headings and bullet points.`,
-      },
-      {
-        role: 'user',
-        content: prompt,
-      },
-    ];
+        },
+        {
+          role: 'user',
+          content: prompt,
+        },
+      ],
+    })
 
-    const content = await generateWithRetry(messages);
-    
-    return new Response(
-      JSON.stringify({ content }),
-      { status: 200, headers }
-    );
-  } catch (error: unknown) {
-    console.error('Error generating content:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Failed to generate content';
-    return new Response(
-      JSON.stringify({ error: errorMessage }),
-      { status: 500, headers }
-    );
+    const generatedContent = completion.choices[0].message.content
+
+    return NextResponse.json({ content: generatedContent })
+  } catch (error) {
+    console.error('Error generating content:', error)
+    return NextResponse.json({ error: 'Error generating content' }, { status: 500 })
   }
 }

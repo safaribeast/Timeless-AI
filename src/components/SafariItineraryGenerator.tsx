@@ -7,7 +7,6 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 
 const destinations = {
   Tanzania: ['Northern Circuit', 'Southern Circuit', 'Western Circuit'],
@@ -37,8 +36,7 @@ export default function SafariItineraryGenerator() {
   const [generatedItinerary, setGeneratedItinerary] = useState('')
   const [aiScore, setAiScore] = useState(0)
   const [humanScore, setHumanScore] = useState(0)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
 
   const handleDestinationChange = (value: string) => {
     setDestination(value)
@@ -59,14 +57,11 @@ export default function SafariItineraryGenerator() {
     )
   }
 
-  const handleGenerate = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    setLoading(true)
-    setError(null)
-    setGeneratedItinerary('')
-
+    setIsLoading(true)
     try {
-      const response = await fetchWithTimeout('/api/generate-safari-itinerary', {
+      const response = await fetch('/api/generate-safari-itinerary', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -79,26 +74,16 @@ export default function SafariItineraryGenerator() {
           arrivalMethod,
           duration,
         }),
-        timeout: 120000, // 2 minutes
       })
-
       const data = await response.json()
       setGeneratedItinerary(data.content)
-      setAiScore(data.aiScore || 0)
-      setHumanScore(data.humanScore || 0)
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'An error occurred while generating the itinerary'
-      setError(errorMessage)
-      console.error('Error generating safari itinerary:', error)
+      setAiScore(data.aiScore)
+      setHumanScore(data.humanScore)
+    } catch (error) {
+      console.error('Error generating itinerary:', error)
     } finally {
-      setLoading(false)
+      setIsLoading(false)
     }
-  }
-
-  const handleRegenerate = async (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.preventDefault()
-    const formEvent = new Event('submit') as unknown as React.FormEvent<HTMLFormElement>
-    handleGenerate(formEvent)
   }
 
   const handleExport = (format: 'md' | 'doc' | 'pdf') => {
@@ -106,9 +91,14 @@ export default function SafariItineraryGenerator() {
     console.log(`Exporting as ${format}`)
   }
 
+  const handleRegenerate = () => {
+    const event = { preventDefault: () => {} } as React.FormEvent<HTMLFormElement>
+    handleSubmit(event)
+  }
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-      <form onSubmit={handleGenerate} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6">
         <div>
           <Label htmlFor="companyName">Company Name</Label>
           <Input
@@ -197,26 +187,9 @@ export default function SafariItineraryGenerator() {
             required
           />
         </div>
-        <Button 
-          type="submit"
-          size="default"
-          className="w-full"
-          disabled={loading}
-        >
-          {loading ? (
-            <div className="flex items-center space-x-2">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-              <span>Generating...</span>
-            </div>
-          ) : (
-            'Generate Itinerary'
-          )}
+        <Button type="submit" disabled={isLoading}>
+          {isLoading ? 'Generating...' : 'Generate Itinerary'}
         </Button>
-        {error && (
-          <div className="mt-4 p-4 bg-red-50 text-red-600 rounded-md">
-            {error}
-          </div>
-        )}
       </form>
       <div className="space-y-4">
         <div>
